@@ -35,13 +35,13 @@ public class RealFile extends MapFile {
 
 	public RealFile(File file) {
 		getConf().getFiles().add(file);
-		setLastmodified(file.lastModified());
+		setLastModified(file.lastModified());
 	}
 
 	public RealFile(File file, String name) {
 		getConf().getFiles().add(file);
 		getConf().setName(name);
-		setLastmodified(file.lastModified());
+		setLastModified(file.lastModified());
 	}
 
 	@Override
@@ -49,7 +49,7 @@ public class RealFile extends MapFile {
 	public boolean isValid() {
 		File file = this.getFile();
 		checktype();
-		if (getType() == Format.VIDEO && file.exists() && PMS.getConfiguration().getUseSubtitles() && file.getName().length() > 4) {
+		if (getType() == Format.VIDEO && file.exists() && PMS.getConfiguration().isAutoloadSubtitles() && file.getName().length() > 4) {
 			setSrtFile(FileUtil.doesSubtitlesExists(file, null));
 		}
 		boolean valid = file.exists() && (getFormat() != null || file.isDirectory());
@@ -61,8 +61,10 @@ public class RealFile extends MapFile {
 			{
 				getMedia().setThumbready(false);
 			}
-			if (getMedia() != null && (getMedia().isEncrypted() || getMedia().getContainer() == null || getMedia().getContainer().equals(DLNAMediaLang.UND))) {
-				// fine tuning: bad parsing = no file !
+			// Given that here getFormat() has already matched some (possibly plugin-defined) format:
+			//    Format.UNKNOWN + bad parse = inconclusive
+			//    known types    + bad parse = bad/encrypted file
+			if (getType() != Format.UNKNOWN && getMedia() != null && (getMedia().isEncrypted() || getMedia().getContainer() == null || getMedia().getContainer().equals(DLNAMediaLang.UND))) {
 				valid = false;
 				if (getMedia().isEncrypted()) {
 					logger.info("The file " + file.getAbsolutePath() + " is encrypted. It will be hidden");

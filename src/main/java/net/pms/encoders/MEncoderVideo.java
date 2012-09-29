@@ -901,13 +901,13 @@ public class MEncoderVideo extends Player {
 		subs = new JCheckBox(Messages.getString("MEncoderVideo.22"));
 		subs.setContentAreaFilled(false);
 
-		if (configuration.getUseSubtitles()) {
+		if (configuration.isAutoloadSubtitles()) {
 			subs.setSelected(true);
 		}
 
 		subs.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
-				configuration.setUseSubtitles((e.getStateChange() == ItemEvent.SELECTED));
+				configuration.setAutoloadSubtitles((e.getStateChange() == ItemEvent.SELECTED));
 			}
 		});
 
@@ -1383,8 +1383,9 @@ public class MEncoderVideo extends Player {
 			&& (params.mediaRenderer.isPS3() && params.aid.getAudioProperties().getNumberOfChannels() == 2)
 			&& (params.aid.getBitRate() > 370000 && params.aid.getBitRate() < 400000);
 
-		boolean isTSMuxerVideoEngineEnabled = PMS.getConfiguration().getEnginesAsList(PMS.get().getRegistry()).contains(TSMuxerVideo.ID);
-        if (configuration.isRemuxAC3() && params.aid != null && params.aid.isAC3() && !ps3_and_stereo_and_384_kbits && !avisynth() && params.mediaRenderer.isTranscodeToAC3()) {
+		final boolean isTSMuxerVideoEngineEnabled = PMS.getConfiguration().getEnginesAsList(PMS.get().getRegistry()).contains(TSMuxerVideo.ID);
+		final boolean mencoderAC3RemuxAudioDelayBug = (params.aid != null) && (params.aid.getAudioProperties().getAudioDelay() != 0) && (params.timeseek == 0);
+        if (!mencoderAC3RemuxAudioDelayBug && configuration.isRemuxAC3() && params.aid != null && params.aid.isAC3() && !ps3_and_stereo_and_384_kbits && !avisynth() && params.mediaRenderer.isTranscodeToAC3()) {
 			// AC3 remux takes priority
 			ac3Remux = true;
 		} else {
@@ -2359,16 +2360,16 @@ public class MEncoderVideo extends Player {
 				PipeIPCProcess ffAudioPipe = new PipeIPCProcess(System.currentTimeMillis() + "ffmpegaudio01", System.currentTimeMillis() + "audioout", false, true);
 				StreamModifier sm = new StreamModifier();
 				sm.setPcm(pcm);
-				sm.setDtsembed(dtsRemux);
+				sm.setDtsEmbed(dtsRemux);
 				sm.setSampleFrequency(48000);
-				sm.setBitspersample(16);
+				sm.setBitsPerSample(16);
 
 				String mixer = null;
 				if (pcm && !dtsRemux) {
 					mixer = getLPCMChannelMappingForMencoder(params.aid); // LPCM always outputs 5.1/7.1 for multichannel tracks. Downmix with player if needed!
 				}
 
-				sm.setNbchannels(channels);
+				sm.setNbChannels(channels);
 
 				// it seems the -really-quiet prevents mencoder to stop the pipe output after some time...
 				// -mc 0.1 make the DTS-HD extraction works better with latest mencoder builds, and makes no impact on the regular DTS one
@@ -2452,7 +2453,7 @@ public class MEncoderVideo extends Player {
 				// audio delay is ignored when playing from file start (-ss 0)
 				// override with tsmuxer.meta setting
 				String timeshift = "";
-				if (params.aid.getAudioProperties().getAudioDelay() != 0 && params.timeseek == 0) {
+				if (mencoderAC3RemuxAudioDelayBug) {
 					timeshift = "timeshift=" + params.aid.getAudioProperties().getAudioDelay() + "ms, ";
 				}
 

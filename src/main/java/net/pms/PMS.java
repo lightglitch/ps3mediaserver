@@ -266,7 +266,7 @@ public class PMS {
 	private DLNAMediaDatabase database;
 
 	private void initializeDatabase() {
-		database = new DLNAMediaDatabase("medias");
+		database = new DLNAMediaDatabase("medias"); // TODO: rename "medias" -> "cache"
 		database.init(false);
 	}
 
@@ -446,11 +446,11 @@ public class PMS {
 		// Initialize a player factory to register all players
 		PlayerFactory.initialize(configuration);
 
-		// Add registered player engines
-		frame.addEngines();
-
 		// Instantiate listeners that require registered players.
 		ExternalFactory.instantiateLateListeners();
+
+		// Any plugin-defined players are now registered, create the gui view.
+		frame.addEngines();
 
 		boolean binding = false;
 
@@ -842,6 +842,7 @@ public class PMS {
 
 		try {
 			Toolkit.getDefaultToolkit();
+
 			if (GraphicsEnvironment.isHeadless()) {
 				if (System.getProperty(NOCONSOLE) == null) {
 					System.setProperty(CONSOLE, Boolean.toString(true));
@@ -850,7 +851,8 @@ public class PMS {
 				headless = false;
 			}
 		} catch (Throwable t) {
-			System.err.println("Toolkit error: " + t.getMessage());
+			System.err.println("Toolkit error: " + t.getClass().getName() + ": " + t.getMessage());
+
 			if (System.getProperty(NOCONSOLE) == null) {
 				System.setProperty(CONSOLE, Boolean.toString(true));
 			}
@@ -872,8 +874,22 @@ public class PMS {
 			// create the PMS instance returned by get()
 			createInstance(); 
 		} catch (Throwable t) {
-			System.err.println("Configuration error: " + t.getMessage());
-			JOptionPane.showMessageDialog(null, "Configuration error:"+t.getMessage(), "Error initalizing PMS!", JOptionPane.ERROR_MESSAGE);
+			String errorMessage = String.format(
+				"Configuration error: %s: %s",
+				t.getClass().getName(),
+				t.getMessage()
+			);
+
+			System.err.println(errorMessage);
+
+			if (!headless && instance != null) {
+				JOptionPane.showMessageDialog(
+					((JFrame) (SwingUtilities.getWindowAncestor((Component) instance.getFrame()))),
+					errorMessage,
+					"Error initalizing PMS!",
+					JOptionPane.ERROR_MESSAGE
+				);
+			}
 		}
 	}
 
