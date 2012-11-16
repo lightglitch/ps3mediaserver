@@ -19,10 +19,12 @@
 package net.pms.configuration;
 
 import com.sun.jna.Platform;
-import net.pms.Messages;
+
 import net.pms.io.SystemUtils;
+import net.pms.Messages;
 import net.pms.util.FileUtil;
 import net.pms.util.PropertiesUtil;
+
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
@@ -30,6 +32,7 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.configuration.event.ConfigurationListener;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,6 +121,7 @@ public class PmsConfiguration {
 	private static final String KEY_MENCODER_MAIN_SETTINGS = "mencoder_encode";
 	private static final String KEY_MENCODER_MAX_THREADS = "mencoder_max_threads";
 	private static final String KEY_MENCODER_MT = "mencoder_mt";
+	private static final String KEY_MENCODER_MUX_COMPATIBLE = "mencoder_mux_compatible";
 	private static final String KEY_MENCODER_NOASS_BLUR = "mencoder_noass_blur";
 	private static final String KEY_MENCODER_NOASS_OUTLINE = "mencoder_noass_outline";
 	private static final String KEY_MENCODER_NOASS_SCALE = "mencoder_noass_scale";
@@ -2003,7 +2007,7 @@ public class PmsConfiguration {
 	 */
 	@Deprecated
 	public void setMencoderMuxWhenCompatible(boolean value) {
-		// noop
+		configuration.setProperty(KEY_MENCODER_MUX_COMPATIBLE, value);
 	}
 
 	/**
@@ -2011,7 +2015,7 @@ public class PmsConfiguration {
 	 */
 	@Deprecated
 	public boolean isMencoderMuxWhenCompatible() {
-		return false;
+		return getBoolean(KEY_MENCODER_MUX_COMPATIBLE, true);
 	}
 
 	public void setMuxAllAudioTracks(boolean value) {
