@@ -129,7 +129,7 @@ public class TSMuxerVideo extends Player {
 		}
 
 		if (this instanceof TsMuxerAudio && media.getFirstAudioTrack() != null) {
-			String fakeFileName = writeResourceToFile("/resources/images/fake.jpg"); 
+			String fakeFileName = writeResourceToFile("/resources/images/fake.jpg");
 			ffVideoPipe = new PipeIPCProcess(System.currentTimeMillis() + "fakevideo", System.currentTimeMillis() + "videoout", false, true);
 			String[] ffmpegLPCMextract = new String[] {
 				configuration.getFfmpegPath(),
@@ -327,12 +327,13 @@ public class TSMuxerVideo extends Player {
 						StreamModifier sm = new StreamModifier();
 						sm.setPcm(pcm);
 						sm.setDtsEmbed(dtsRemux);
-						sm.setNbChannels(channels);
+						sm.setNbChannels(configuration.isHDAudioPassthrough()? 2: channels);
+                        sm.setEncodedAudioPassthrough(configuration.isHDAudioPassthrough() && params.aid.isNonPCMEncodedAudio());
 						sm.setSampleFrequency(params.aid.getSampleRate() < 48000 ? 48000 : params.aid.getSampleRate());
 						sm.setBitsPerSample(16);
 						String mixer = null;
 
-						if (pcm && !dtsRemux) {
+						if (pcm && !dtsRemux && !sm.isEncodedAudioPassthrough())  {
 							mixer = getLPCMChannelMappingForMencoder(params.aid);
 						}
 
@@ -347,9 +348,9 @@ public class TSMuxerVideo extends Player {
 							"-channels", "" + sm.getNbChannels(),
 							"-ovc", "copy",
 							"-of", "rawaudio",
-							"-mc", sm.isDtsEmbed() ? "0.1" : "0",
+							"-mc", sm.isDtsEmbed() || sm.isEncodedAudioPassthrough() ? "0.1" : "0",
 							"-noskip",
-							"-oac", sm.isDtsEmbed() ? "copy" : "pcm",
+							"-oac", sm.isDtsEmbed() || sm.isEncodedAudioPassthrough() ? "copy" : "pcm",
 							isNotBlank(mixer) ? "-af" : "-quiet", isNotBlank(mixer) ? mixer : "-quiet",
 							singleMediaAudio ? "-quiet" : "-aid", singleMediaAudio ? "-quiet" : ("" + params.aid.getId()),
 							"-srate", "48000",
@@ -448,14 +449,15 @@ public class TSMuxerVideo extends Player {
 							StreamModifier sm = new StreamModifier();
 							sm.setPcm(pcm);
 							sm.setDtsEmbed(dtsRemux);
-							sm.setNbChannels(channels);
+                            sm.setNbChannels(configuration.isHDAudioPassthrough()? 2: channels);
+                            sm.setEncodedAudioPassthrough(configuration.isHDAudioPassthrough() && audio.isNonPCMEncodedAudio());
 							sm.setSampleFrequency(audio.getSampleRate() < 48000 ? 48000 : audio.getSampleRate());
 							sm.setBitsPerSample(16);
 							if (!params.mediaRenderer.isMuxDTSToMpeg()) {
 								ffAudioPipe[i].setModifier(sm);
 							}
 							String mixer = null;
-							if (pcm && !dtsRemux) {
+							if (pcm && !dtsRemux && !sm.isEncodedAudioPassthrough()) {
 								mixer = getLPCMChannelMappingForMencoder(audio);
 							}
 							ffmpegLPCMextract = new String[]{
@@ -469,9 +471,9 @@ public class TSMuxerVideo extends Player {
 								"-channels", "" + sm.getNbChannels(),
 								"-ovc", "copy",
 								"-of", "rawaudio",
-								"-mc", sm.isDtsEmbed() ? "0.1" : "0",
+								"-mc", sm.isDtsEmbed() || sm.isEncodedAudioPassthrough() ? "0.1" : "0",
 								"-noskip",
-								"-oac", sm.isDtsEmbed() ? "copy" : "pcm",
+								"-oac", sm.isDtsEmbed() || sm.isEncodedAudioPassthrough() ? "copy" : "pcm",
 								isNotBlank(mixer) ? "-af" : "-quiet", isNotBlank(mixer) ? mixer : "-quiet",
 								singleMediaAudio ? "-quiet" : "-aid", singleMediaAudio ? "-quiet" : ("" + audio.getId()),
 								"-srate", "48000",
@@ -736,14 +738,14 @@ public class TSMuxerVideo extends Player {
 			final URL resourceUrl = getClass().getClassLoader().getResource(resourceName);
 			byte[] buffer = new byte[1024];
 			int byteCount = 0;
-	
+
 			InputStream inputStream = null;
 			OutputStream outputStream = null;
-	
+
 			try {
 				inputStream = resourceUrl.openStream();
 				outputStream = new FileOutputStream(outputFileName);
-	
+
 				while ((byteCount = inputStream.read(buffer)) >= 0) {
 					outputStream.write(buffer, 0, byteCount);
 				}
@@ -759,7 +761,7 @@ public class TSMuxerVideo extends Player {
 								+ resourceName, e);
 					}
 				}
-	
+
 				if (outputStream != null) {
 					try {
 						outputStream.flush();
@@ -878,7 +880,7 @@ public class TSMuxerVideo extends Player {
 		try {
 			String audioTrackName = resource.getMediaAudio().toString();
 			String defaultAudioTrackName = resource.getMedia().getAudioTracksList().get(0).toString();
-	
+
 			if (!audioTrackName.equals(defaultAudioTrackName)) {
 				// PMS only supports playback of the default audio track for tsMuxeR
 				return false;

@@ -174,6 +174,8 @@ public class PmsConfiguration {
 	private static final String KEY_UUID = "uuid";
 	private static final String KEY_VIDEOTRANSCODE_START_DELAY = "key_videotranscode_start_delay";
 	private static final String KEY_VIRTUAL_FOLDERS = "vfolders";
+    private static final String KEY_HDAUDIO_PASSTHROUGH = "hdaudio_passthrough";
+
 
 	// the name of the subdirectory under which PMS config files are stored for this build (default: PMS).
 	// see Build for more details
@@ -2311,4 +2313,13 @@ public class PmsConfiguration {
 	public void setTranscodeFolderName(String name) {
 		configuration.setProperty(KEY_TRANSCODE_FOLDER_NAME, name);
 	}
+
+    public void setHDAudioPassthrough(boolean value) {
+        configuration.setProperty(KEY_HDAUDIO_PASSTHROUGH, value);
+    }
+
+    public boolean isHDAudioPassthrough() {
+        return getBoolean(KEY_HDAUDIO_PASSTHROUGH, false);
+    }
+
 }

@@ -565,7 +565,7 @@ public class MEncoderVideo extends Player {
 			Messages.getString("MEncoderVideo.115"),
 			Messages.getString("MEncoderVideo.116"),
 			Messages.getString("MEncoderVideo.117"),
-			Messages.getString("MEncoderVideo.118"),			
+			Messages.getString("MEncoderVideo.118"),
 			Messages.getString("MEncoderVideo.119"),
 			Messages.getString("MEncoderVideo.120"),
 			Messages.getString("MEncoderVideo.121"),
@@ -1261,10 +1261,10 @@ public class MEncoderVideo extends Player {
 			//&& dlna.isNoName() // XXX remove this? http://www.ps3mediaserver.org/forum/viewtopic.php?f=11&t=12149
 			&& (dlna.getParent() instanceof FileTranscodeVirtualFolder);
 
-		
+
 		// don't honour "Switch to tsMuxeR..." if the resource is being forced by the user
 		forceMencoder = forceMencoder || dlna.getFormat().skip(PMS.getConfiguration().getForceTranscode(), null);
-		
+
 		ovccopy = false;
 		pcm = false;
 		ac3Remux = false;
@@ -1843,7 +1843,7 @@ public class MEncoderVideo extends Player {
 
 			/*
 			 * Implement overscan compensation settings
-			 * 
+			 *
 			 * This feature takes into account aspect ratio,
 			 * making it less blunt than the Video Scaler option
 			 */
@@ -1913,7 +1913,7 @@ public class MEncoderVideo extends Player {
 				media.getWidth() > 0 &&
 				media.getHeight() > 0 &&
 				(
-					media.getWidth()  > params.mediaRenderer.getMaxVideoWidth() || 
+					media.getWidth()  > params.mediaRenderer.getMaxVideoWidth() ||
 					media.getHeight() > params.mediaRenderer.getMaxVideoHeight()
 				)
 			) {
@@ -1923,7 +1923,7 @@ public class MEncoderVideo extends Player {
 				/*
 				 * First we deal with some exceptions, then if they are not matched we will
 				 * let the renderer limits work.
-				 * 
+				 *
 				 * This is so, for example, we can still define a maximum resolution of
 				 * 1920x1080 in the renderer config file but still support 1920x1088 when
 				 * it's needed, otherwise we would either resize 1088 to 1080, meaning the
@@ -1984,7 +1984,7 @@ public class MEncoderVideo extends Player {
 		 * case we scale it down to the nearest 4.
 		 * This fixes the long-time bug of videos displaying in black and
 		 * white with diagonal strips of colour, weird one.
-		 * 
+		 *
 		 * TODO: Integrate this with the other stuff so that "scale" only
 		 * ever appears once in the MEncoder CMD.
 		 */
@@ -2258,7 +2258,7 @@ public class MEncoderVideo extends Player {
 				audioPipe.deleteLater();
 			} else {
 				// remove the -oac switch, otherwise the "too many video packets" errors appear again
-				for (ListIterator<String> it = cmdList.listIterator(); it.hasNext();) { 
+				for (ListIterator<String> it = cmdList.listIterator(); it.hasNext();) {
 					String option = it.next();
 
 					if (option.equals("-oac")) {
@@ -2317,20 +2317,22 @@ public class MEncoderVideo extends Player {
 				StreamModifier sm = new StreamModifier();
 				sm.setPcm(pcm);
 				sm.setDtsEmbed(dtsRemux);
+                sm.setEncodedAudioPassthrough(configuration.isHDAudioPassthrough() && params.aid.isNonPCMEncodedAudio());
 				sm.setSampleFrequency(48000);
 				sm.setBitsPerSample(16);
 
 				String mixer = null;
-				if (pcm && !dtsRemux) {
+				if (pcm && !dtsRemux && !sm.isEncodedAudioPassthrough()) {
 					mixer = getLPCMChannelMappingForMencoder(params.aid); // LPCM always outputs 5.1/7.1 for multichannel tracks. Downmix with player if needed!
 				}
 
-				sm.setNbChannels(channels);
+				//sm.setNbChannels(channels);
+                sm.setNbChannels(configuration.isHDAudioPassthrough()? 2: channels);
 
 				// it seems the -really-quiet prevents mencoder to stop the pipe output after some time...
 				// -mc 0.1 make the DTS-HD extraction works better with latest mencoder builds, and makes no impact on the regular DTS one
 				String ffmpegLPCMextract[] = new String[]{
-					executable(), 
+					executable(),
 					"-ss", "0",
 					fileName,
 					"-really-quiet",
@@ -2338,10 +2340,10 @@ public class MEncoderVideo extends Player {
 					"-channels", "" + channels,
 					"-ovc", "copy",
 					"-of", "rawaudio",
-					"-mc", dtsRemux ? "0.1" : "0",
+					"-mc", dtsRemux || sm.isEncodedAudioPassthrough()? "0.1" : "0",
 					"-noskip",
 					(aid == null) ? "-quiet" : "-aid", (aid == null) ? "-quiet" : aid,
-					"-oac", (ac3Remux || dtsRemux) ? "copy" : "pcm",
+					"-oac", (ac3Remux || dtsRemux || sm.isEncodedAudioPassthrough()) ? "copy" : "pcm",
 					(isNotBlank(mixer) && !channels_filter_present) ? "-af" : "-quiet", (isNotBlank(mixer) && !channels_filter_present) ? mixer : "-quiet",
 					"-srate", "48000",
 					"-o", ffAudioPipe.getInputPipe()

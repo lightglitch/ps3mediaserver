@@ -8,6 +8,7 @@ public class StreamModifier {
 	private int sampleFrequency;
 	private int bitsPerSample;
 	private boolean dtsEmbed;
+	private boolean spdifembed;
 
 	public byte[] getHeader() {
 		return header;
@@ -127,5 +128,13 @@ public class StreamModifier {
 
 	public void setBitsPerSample(int bitsPerSample) {
 		this.bitsPerSample = bitsPerSample;
+	}
+
+	public boolean isEncodedAudioPassthrough() {
+		return spdifembed;
+	}
+
+	public void setEncodedAudioPassthrough(boolean spdifembed) {
+		this.spdifembed = spdifembed;
 	}
 }
