@@ -18,6 +18,7 @@
  */
 package net.pms.dlna;
 
+import net.pms.Messages;
 import net.pms.PMS;
 import net.pms.configuration.FormatConfiguration;
 import net.pms.configuration.RendererConfiguration;
@@ -33,7 +34,6 @@ import net.pms.formats.FormatFactory;
 import net.pms.io.OutputParams;
 import net.pms.io.ProcessWrapper;
 import net.pms.io.SizeLimitInputStream;
-import net.pms.Messages;
 import net.pms.network.HTTPResource;
 import net.pms.util.FileUtil;
 import net.pms.util.ImagesUtil;
@@ -50,6 +50,7 @@ import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 
 import static net.pms.util.StringUtil.*;
 
@@ -402,7 +403,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 		setSpecificType(specificType);
 	}
 
-	/** Recursive function that searchs through all of the children until it finds
+	/** Recursive function that searches through all of the children until it finds
 	 * a {@link DLNAResource} that matches the name.<p> Only used by
 	 * {@link net.pms.dlna.RootFolder#addWebFolder(File webConf)
 	 * addWebFolder(File webConf)} while parsing the web.conf file.
@@ -859,71 +860,246 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 	}
 
 	// Ditlew
-	/**Returns the DisplayName for the default renderer.
+	/**
+	 * Returns the DisplayName for the default renderer.
+	 * 
 	 * @return The display name.
 	 * @see #getDisplayName(RendererConfiguration)
 	 */
 	public String getDisplayName() {
-		return getDisplayName(null);
+		return getDisplayName(getDefaultRenderer());
 	}
 
-	// Ditlew - org
-	//public String getDisplayName() {
-	// Ditlew
-	/**Returns the DisplayName that is shown to the Renderer. Depending on the settings,
-	 * extra info might be appended, like item duration.<p>
-	 * This is based on {@link #getName()}.
-	 * @param mediaRenderer Media Renderer for which to show information.
+	/**
+	 * Returns the string for this resource that will be displayed on the
+	 * renderer. The name is formatted based on the renderer configuration
+	 * setting "FileNameFormat" to contain the information of the resource.
+	 * This allows the same resource to be displayed with different display
+	 * names on different renderers.
+	 * <p>
+	 * The following formatting options are accepted:
+	 *
+	 * <table>
+	 * <tr><th>Option</th><th>Description</th></tr>
+	 * <tr><td>%A</td><td>Audio language full name</td></tr>
+	 * <tr><td>%a</td><td>Audio language short name</td></tr>
+	 * <tr><td>%b</td><td>Audio flavor</td></tr>
+	 * <tr><td>%c</td><td>Audio codec</td></tr>
+	 * <tr><td>%d</td><td>DVD track duration</td></tr>
+	 * <tr><td>%E</td><td>Engine full name</td></tr>
+	 * <tr><td>%e</td><td>Engine short name</td></tr>
+	 * <tr><td>%F</td><td>File name with extension</td></tr>
+	 * <tr><td>%f</td><td>File name without extension</td></tr>
+	 * <tr><td>%S</td><td>Subtitle language full name</td></tr>
+	 * <tr><td>%s</td><td>Subtitle language short name</td></tr>
+	 * <tr><td>%t</td><td>Subtitle type</td></tr>
+	 * <tr><td>%u</td><td>Subtitle flavor</td></tr>
+	 * <tr><td>%x</td><td>External subtitles</td></tr>
+	 * </table>
+	 *
+	 * @param mediaRenderer
+	 *            Media Renderer for which to show information.
 	 * @return String representing the item.
 	 */
 	public String getDisplayName(RendererConfiguration mediaRenderer) {
-		String name = getName();
-		if (this instanceof RealFile && PMS.getConfiguration().isHideExtensions() && !isFolder()) {
-			name = FileUtil.getFileNameWithoutExtension(name);
-		}
-		if (getPlayer() != null) {
-			if (isNoName()) {
-				name = "[" + getPlayer().name() + "]";
-			} else {
-				// Ditlew - WDTV Live don't show durations otherwise, and this is useful for finding the main title
-				if (mediaRenderer != null && mediaRenderer.isShowDVDTitleDuration() && getMedia().getDvdtrack() > 0) {
-					name += " - " + getMedia().getDurationString();
-				}
 
-				if (!PMS.getConfiguration().isHideEngineNames()) {
-					name += " [" + getPlayer().name() + "]";
-				}
+		// Chapter virtual folder ignores formats and only displays the start time
+		if (getSplitRange().isEndLimitAvailable()) {
+			return ">> " + DLNAMediaInfo.getDurationString(getSplitRange().getStart());
+		}
+
+		// Is this still relevant? The player name already contains "AviSynth"
+		if (isAvisynth()) {
+			return (getPlayer() != null ? ("[" + getPlayer().name()) : "") + " + AviSynth]";
+		}
+
+		String result;
+		String format;
+		String audioLangFullName = "";
+		String audioLangShortName = "";
+		String audioFlavor = "";
+		String audioCodec = "";
+		String dvdTrackDuration = "";
+		String engineFullName = "";
+		String engineShortName = "";
+		String filenameWithExtension = "";
+		String filenameWithoutExtension = "";
+		String subLangFullName = "";
+		String subLangShortName = "";
+		String subType = "";
+		String subFlavor = "";
+		String externalSubs = "";
+
+		// Entries in the transcoding virtual folder get their audio details
+		// set. So if this is the case, use the short file name format.
+		boolean useShortFormat = (getMediaAudio() != null);
+
+		// Determine the format
+		if (mediaRenderer != null) {
+			if (useShortFormat) {
+				format = mediaRenderer.getShortFileNameFormat();
+			} else {
+				format = mediaRenderer.getLongFileNameFormat();
 			}
 		} else {
-			if (isNoName()) {
-				name = "[No encoding]";
-			} else if (nametruncate > 0) {
-				name = name.substring(0, nametruncate).trim();
+			if (useShortFormat) {
+				format = Messages.getString("DLNAResource.3");
+			} else {
+				format = Messages.getString("DLNAResource.4");
 			}
 		}
 
+		// Handle file name
+		if (isNoName()) {
+			format = smartRemove(format, "%F", true);
+			format = smartRemove(format, "%f", true);
+		} else {
+			filenameWithExtension = getName();
+			filenameWithoutExtension = FileUtil.getFileNameWithoutExtension(filenameWithExtension);
+
+			// Check if file extensions are configured to be hidden
+			if (this instanceof RealFile && PMS.getConfiguration().isHideExtensions() && !isFolder()) {
+				filenameWithExtension = filenameWithoutExtension;
+			}
+		}
+
+		// Handle engine name
+		if (PMS.getConfiguration().isHideEngineNames()) {
+			format = smartRemove(format, "%E", true);
+			format = smartRemove(format, "%e", true);
+		} else {
+			if (getPlayer() != null) {
+				engineFullName = getPlayer().name();
+				engineShortName = abbreviate(engineFullName);
+			} else {
+				if (isNoName()) {
+					engineFullName = Messages.getString("DLNAResource.1");
+					engineShortName = Messages.getString("DLNAResource.2");
+				} else {
+					format = smartRemove(format, "%E", true);
+					format = smartRemove(format, "%e", true);
+				}
+			}
+		}
+
+		// Handle DVD track duration
+		if (mediaRenderer != null && mediaRenderer.isShowDVDTitleDuration()
+				&& getMedia() != null && getMedia().getDvdtrack() > 0) {
+			dvdTrackDuration = getMedia().getDurationString();
+		} else {
+			format = smartRemove(format, "%d", false);
+		}
+
+		// Handle external subtitles
 		if (isSrtFile() && (getMediaAudio() == null && getMediaSubtitle() == null)
 				&& (getPlayer() == null || getPlayer().isExternalSubtitlesSupported())) {
-			name += " {External Subtitles}";
+			externalSubs = Messages.getString("DLNAResource.0");
+		} else {
+			format = smartRemove(format, "%x", false);
 		}
 
+		// Handle audio
 		if (getMediaAudio() != null) {
-			name = (getPlayer() != null ? ("[" + getPlayer().name() + "]") : "") + " {Audio: " + getMediaAudio().getAudioCodec() + "/" + getMediaAudio().getLangFullName() + ((getMediaAudio().getFlavor() != null && mediaRenderer != null && mediaRenderer.isShowAudioMetadata()) ? (" (" + getMediaAudio().getFlavor() + ")") : "") + "}";
-		}
+			audioCodec = getMediaAudio().getAudioCodec();
+			audioLangFullName = getMediaAudio().getLangFullName();
+			audioLangShortName = getMediaAudio().getLang();
 
+			if ((getMediaAudio().getFlavor() != null && mediaRenderer != null && mediaRenderer.isShowAudioMetadata())) {
+				audioFlavor = getMediaAudio().getFlavor();
+			} else {
+				format = smartRemove(format, "%b", false);
+			}
+		} else {
+			format = smartRemove(format, "%b", false);
+			format = smartRemove(format, "%c", false);
+			format = smartRemove(format, "%A", true);
+			format = smartRemove(format, "%a", true);
+		}
+		
+		// Handle subtitle
 		if (getMediaSubtitle() != null && getMediaSubtitle().getId() != -1) {
-			name += " {Sub: " + getMediaSubtitle().getType().getDescription() + "/" + getMediaSubtitle().getLangFullName() + ((getMediaSubtitle().getFlavor() != null && mediaRenderer != null && mediaRenderer.isShowSubMetadata()) ? (" (" + getMediaSubtitle().getFlavor() + ")") : "") + "}";
+			subType = getMediaSubtitle().getType().getDescription();
+			subLangFullName = getMediaSubtitle().getLangFullName();
+			subLangShortName = getMediaSubtitle().getLang();
+
+			if (getMediaSubtitle().getFlavor() != null && mediaRenderer != null && mediaRenderer.isShowSubMetadata()) {
+				subFlavor = getMediaSubtitle().getFlavor();
+			} else {
+				format = smartRemove(format, "%u", false);
+			}
+		} else {
+			format = smartRemove(format, "%u", false);
+			format = smartRemove(format, "%t", false);
+			format = smartRemove(format, "%S", true);
+			format = smartRemove(format, "%s", true);
 		}
 
-		if (isAvisynth()) {
-			name = (getPlayer() != null ? ("[" + getPlayer().name()) : "") + " + AviSynth]";
+		// Finally, construct the result by replacing all tokens
+		result = format;
+		result = result.replaceAll("%A", audioLangFullName);
+		result = result.replaceAll("%a", audioLangShortName);
+		result = result.replaceAll("%b", audioFlavor);
+		result = result.replaceAll("%c", audioCodec);
+		result = result.replaceAll("%d", dvdTrackDuration);
+		result = result.replaceAll("%E", engineFullName);
+		result = result.replaceAll("%e", engineShortName);
+		// XXX escape $ characters in the filename e.g. "The $10,000 Pyramid" -> "The \$10,000 Pyramid"
+		// otherwise they confuse replaceAll:
+		// http://www.ps3mediaserver.org/forum/viewtopic.php?f=3&t=15734
+		// http://cephas.net/blog/2006/02/09/javalangillegalargumentexception-illegal-group-reference-replaceall-and-dollar-signs/
+		result = result.replaceAll("%F", Matcher.quoteReplacement(filenameWithExtension));
+		result = result.replaceAll("%f", Matcher.quoteReplacement(filenameWithoutExtension));
+		result = result.replaceAll("%S", subLangFullName);
+		result = result.replaceAll("%s", subLangShortName);
+		result = result.replaceAll("%t", subType);
+		result = result.replaceAll("%u", subFlavor);
+		result = result.replaceAll("%x", externalSubs);
+		result = result.trim();
+
+		return result;
+	}
+	
+	/**
+	 * Removes the given token from the format string while trying to be smart
+	 * about it. This means that optional surrounding braces, curly braces,
+	 * brackets are removed as well, as are superfluous whitespace and
+	 * separators. For example, removing "%E" from "%F - %d [%E] {%x}" results
+	 * in "%F - %d {%x}". Removing "%d" from that will return "%F {%x}".
+	 * 
+	 * @param format
+	 *            The format string to remove the token from.
+	 * @param token
+	 *            The token to remove.
+	 * @param aggressive
+	 *            Search aggressively for surrounding braces, i.e. also delete
+	 *            them if they are not directly adjacent to the token.
+	 * @return The string with the token removed.
+	 */
+	private String smartRemove(String format, String token, boolean aggressive) {
+		if (token == null) {
+			return format;
 		}
 
-		if (getSplitRange().isEndLimitAvailable()) {
-			name = ">> " + DLNAMediaInfo.getDurationString(getSplitRange().getStart());
-		}
+		String result = format;
 
-		return name;
+		if (aggressive) {
+			// Allow other characters between the token and the braces
+			result = result.replaceAll("\\([^\\(]*" + token + "[^\\)]*\\)", "");
+			result = result.replaceAll("\\[[^\\[]*" + token + "[^\\]]*\\]", "");
+			result = result.replaceAll("\\{[^\\{]*" + token + "[^\\}]*\\}", "");
+			result = result.replaceAll("<[^<]*" + token + "[^>]*>", "");
+		} else {
+			// Braces have to be around the token
+			result = result.replaceAll("[\\(\\[<\\{]" + token + "[\\)\\]>\\}]", "");
+		}
+		result = result.replaceAll("[-/,]\\s?" + token, "");
+		result = result.replaceAll(token, "");
+
+		// Collapse multiple spaces to a single space
+		result = result.replaceAll("\\s+", " ");
+		result = result.trim();
+
+		return result;
 	}
 
 	/**Prototype for returning URLs.
@@ -1058,7 +1234,7 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 		//addXMLTagAndAttribute(sb, "dc:title", encodeXML((isFolder()||player==null)?getDisplayName():mediaRenderer.getUseSameExtension(getDisplayName())));
 		// Ditlew
 		{
-			addXMLTagAndAttribute(sb, "dc:title", encodeXML((isFolder() || getPlayer() == null) ? getDisplayName() : mediaRenderer.getUseSameExtension(getDisplayName(mediaRenderer))));
+			addXMLTagAndAttribute(sb, "dc:title", encodeXML((isFolder() || getPlayer() == null) ? getDisplayName(mediaRenderer) : mediaRenderer.getUseSameExtension(getDisplayName(mediaRenderer))));
 		}
 
 		if (firstAudioTrack != null) {
@@ -1118,10 +1294,8 @@ public abstract class DLNAResource extends HTTPResource implements Cloneable, Ru
 						if (getPlayer() != null) {
 							// do we have some mpegts to offer ?
 							boolean mpegTsMux = TSMuxerVideo.ID.equals(getPlayer().id()) || VideoLanVideoStreaming.ID.equals(getPlayer().id());
-							if (!mpegTsMux) { // maybe, like the ps3, mencoder can launch tsmuxer if this a compatible H264 video
-								mpegTsMux = MEncoderVideo.ID.equals(getPlayer().id()) && ((getMediaSubtitle() == null && getMedia() != null && getMedia().getDvdtrack() == 0 && getMedia().isMuxable(mediaRenderer)
-									&& PMS.getConfiguration().isMencoderMuxWhenCompatible() && mediaRenderer.isMuxH264MpegTS())
-									|| mediaRenderer.isTranscodeToMPEGTSAC3());
+							if (!mpegTsMux) {
+								mpegTsMux = MEncoderVideo.ID.equals(getPlayer().id()) && mediaRenderer.isTranscodeToMPEGTSAC3();
 							}
 							if (mpegTsMux) {
 								dlnaspec = getMedia().isH264() && !VideoLanVideoStreaming.ID.equals(getPlayer().id()) && getMedia().isMuxable(mediaRenderer) ? "DLNA.ORG_PN=AVC_TS_HD_24_AC3_ISO" : "DLNA.ORG_PN=" + getMPEG_TS_SD_EU_ISOLocalizedValue(c);

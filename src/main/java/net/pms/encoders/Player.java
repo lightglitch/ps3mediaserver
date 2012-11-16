@@ -59,6 +59,7 @@ public abstract class Player {
 	public abstract JComponent config();
 	public abstract String id();
 	public abstract String name();
+
 	public abstract int type();
 
 	// FIXME this is an implementation detail (and not a very good one).
@@ -244,7 +245,7 @@ public abstract class Player {
 		}
 
 		if (matchedSub != null && params.sid == null) {
-			if (matchedSub.getLang() != null && matchedSub.getLang().equals("off")) {
+			if (configuration.isMencoderDisableSubs() || (matchedSub.getLang() != null && matchedSub.getLang().equals("off"))) {
 				logger.trace(" Disabled the subtitles: " + matchedSub);
 			} else {
 				params.sid = matchedSub;

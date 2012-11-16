@@ -31,7 +31,7 @@
 	<artifactId>pms</artifactId>
 	<name>PS3 Media Server</name>
 	<packaging>jar</packaging>
-	<version>1.71.0-SNAPSHOT</version>
+	<version>1.72.0-SNAPSHOT</version> <!-- XXX don't forget to update project.version.short below -->
 	<url>http://www.ps3mediaserver.org/</url>
 	<inceptionYear>2008</inceptionYear>
 
@@ -74,7 +74,7 @@
 
 	<properties>
 		<!-- NSIS needs a version without "-SNAPSHOT" or "-b1" -->
-		<project.version.short>1.51.0</project.version.short>
+		<project.version.short>1.72.0</project.version.short>
 
 		<!--
 			JNA 3.4.0 solves issue #1152, but causes a bug in Windows.
@@ -103,7 +103,7 @@
 		<project.binaries>${project.basedir}/target/bin</project.binaries>
 
 		<!-- Snapshots should get their binaries from the trunk, releases from a tag -->
-		<!-- <project.binaries-base>http://ps3mediaserver.googlecode.com/svn/tags/1.70.0/ps3mediaserver</project.binaries-base> -->
+		<!-- <project.binaries-base>http://ps3mediaserver.googlecode.com/svn/tags/${project.version}/ps3mediaserver</project.binaries-base> -->
 		<project.binaries-base>http://ps3mediaserver.googlecode.com/svn/trunk/ps3mediaserver</project.binaries-base>
 
 		<maven.nsis.project.template>${project.basedir}/src/main/external-resources/nsis/project.jelly</maven.nsis.project.template>
@@ -423,18 +423,6 @@
 
 				<!-- Filter to replace Maven properties -->
 				<filtering>true</filtering>
-			</resource>
-
-			<!--
-				There are (or were) reportedly issues with Eclipse's "Externalize Strings" 
-				wizard if these aren't in the source tree, so keep them here for now, even 
-				though it's Mavenly-incorrect.
-			-->
-			<resource>
-				<directory>src/main/java</directory>
-				<includes>
-					<include>**/*.properties</include>
-				</includes>
 			</resource>
 
 			<!-- Copy and filter the NSIS header file to replace Maven properties -->
@@ -1032,7 +1020,9 @@
 										<get src="${project.binaries-base}/win32/fonts/conf.avail/10-sub-pixel-vbgr.conf" dest="${project.binaries}/win32/fonts/conf.avail/10-sub-pixel-vbgr.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.avail/10-sub-pixel-vrgb.conf" dest="${project.binaries}/win32/fonts/conf.avail/10-sub-pixel-vrgb.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.avail/10-unhinted.conf" dest="${project.binaries}/win32/fonts/conf.avail/10-unhinted.conf" usetimestamp="true" />
-										<get src="${project.binaries-base}/win32/fonts/conf.avail/20-fix-globaladvance.conf" dest="${project.binaries}/win32/fonts/conf.avail/20-fix-globaladvance.conf" usetimestamp="true" />
+										<get src="${project.binaries-base}/win32/fonts/conf.avail/11-lcdfilter-default.conf" dest="${project.binaries}/win32/fonts/conf.avail/11-lcdfilter-default.conf" usetimestamp="true" />
+										<get src="${project.binaries-base}/win32/fonts/conf.avail/11-lcdfilter-legacy.conf" dest="${project.binaries}/win32/fonts/conf.avail/11-lcdfilter-legacy.conf" usetimestamp="true" />
+										<get src="${project.binaries-base}/win32/fonts/conf.avail/11-lcdfilter-light.conf" dest="${project.binaries}/win32/fonts/conf.avail/11-lcdfilter-light.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.avail/20-unhint-small-vera.conf" dest="${project.binaries}/win32/fonts/conf.avail/20-unhint-small-vera.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.avail/25-unhint-nonlatin.conf" dest="${project.binaries}/win32/fonts/conf.avail/25-unhint-nonlatin.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.avail/30-metric-aliases.conf" dest="${project.binaries}/win32/fonts/conf.avail/30-metric-aliases.conf" usetimestamp="true" />
@@ -1051,7 +1041,6 @@
 										<get src="${project.binaries-base}/win32/fonts/conf.avail/70-yes-bitmaps.conf" dest="${project.binaries}/win32/fonts/conf.avail/70-yes-bitmaps.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.avail/80-delicious.conf" dest="${project.binaries}/win32/fonts/conf.avail/80-delicious.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.avail/90-synthetic.conf" dest="${project.binaries}/win32/fonts/conf.avail/90-synthetic.conf" usetimestamp="true" />
-										<get src="${project.binaries-base}/win32/fonts/conf.d/20-fix-globaladvance.conf" dest="${project.binaries}/win32/fonts/conf.d/20-fix-globaladvance.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.d/20-unhint-small-vera.conf" dest="${project.binaries}/win32/fonts/conf.d/20-unhint-small-vera.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.d/30-metric-aliases.conf" dest="${project.binaries}/win32/fonts/conf.d/30-metric-aliases.conf" usetimestamp="true" />
 										<get src="${project.binaries-base}/win32/fonts/conf.d/30-urw-aliases.conf" dest="${project.binaries}/win32/fonts/conf.d/30-urw-aliases.conf" usetimestamp="true" />
