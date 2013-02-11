@@ -119,7 +119,7 @@ public final class PlayerFactory {
 	 *            PMS configuration settings.
 	 */
 	private static void registerPlayers(final PmsConfiguration configuration) {
-
+		// TODO make these constructors consistent: pass configuration to all or to none
 		if (Platform.isWindows()) {
 			registerPlayer(new FFMpegAviSynthVideo());
 		}
@@ -131,7 +131,7 @@ public final class PlayerFactory {
 			registerPlayer(new MEncoderAviSynth(configuration));
 		}
 
-		registerPlayer(new FFMpegVideo());
+		registerPlayer(new FFMpegVideo(configuration));
 		registerPlayer(new MPlayerAudio(configuration));
 		registerPlayer(new FFMpegWebVideo(configuration));
 		registerPlayer(new MEncoderWebVideo(configuration));

@@ -73,7 +73,7 @@ public class PmsConfiguration {
 	private static final String KEY_AVISYNTH_CONVERT_FPS = "avisynth_convertfps";
 	private static final String KEY_AVISYNTH_SCRIPT = "avisynth_script";
 	private static final String KEY_BUFFER_MAX = "buffer_max"; // FIXME what is this? if it should be kept, it needs to be a) documented and b) renamed (breaking change)
-	private static final String KEY_BUFFER_TYPE = "buffertype";
+	private static final String KEY_BUFFER_TYPE = "buffertype"; // FIXME deprecated: unused
 	private static final String KEY_CHAPTER_INTERVAL = "chapter_interval";
 	private static final String KEY_CHAPTER_SUPPORT = "chapter_support";
 	private static final String KEY_CHARSET_ENCODING = "charsetencoding";
@@ -82,8 +82,8 @@ public class PmsConfiguration {
 	private static final String KEY_DVDISO_THUMBNAILS = "dvd_isos_thumbnails";
 	private static final String KEY_EMBED_DTS_IN_PCM = "embed_dts_in_pcm";
 	private static final String KEY_ENGINES = "engines";
-	private static final String KEY_FFMPEG_ALTERNATIVE_PATH = "alternativeffmpegpath";
-	private static final String KEY_FFMPEG_SETTINGS = "ffmpeg";
+	private static final String KEY_FFMPEG_ALTERNATIVE_PATH = "alternativeffmpegpath"; // deprecated: FFMpegDVRMSRemux will be removed and DVR-MS will be transcoded
+	private static final String KEY_FFMPEG_VIDEO_CUSTOM_OPTIONS = "ffmpeg_video_custom_options";
 	private static final String KEY_FIX_25FPS_AV_MISMATCH = "fix_25fps_av_mismatch";
 	private static final String KEY_FORCETRANSCODE = "forcetranscode";
 	private static final String KEY_HIDE_EMPTY_FOLDERS = "hide_empty_folders";
@@ -110,7 +110,7 @@ public class PmsConfiguration {
 	private static final String KEY_MENCODER_ASS_SHADOW = "mencoder_ass_shadow";
 	private static final String KEY_MENCODER_AUDIO_LANGS = "mencoder_audiolangs";
 	private static final String KEY_MENCODER_AUDIO_SUB_LANGS = "mencoder_audiosublangs";
-	private static final String KEY_MENCODER_CUSTOM_OPTIONS = "mencoder_decode"; // TODO (breaking change): should be renamed to e.g. mencoder_custom_options
+	private static final String KEY_MENCODER_CUSTOM_OPTIONS = "mencoder_decode"; // TODO (breaking change): should be renamed to mencoder_video_custom_options
 	private static final String KEY_MENCODER_DISABLE_SUBS = "mencoder_disablesubs";
 	private static final String KEY_MENCODER_FONT = "mencoder_font";
 	private static final String KEY_MENCODER_FONT_CONFIG = "mencoder_fontconfig";
@@ -189,7 +189,7 @@ public class PmsConfiguration {
 	private static String HOSTNAME;
 
 	private static String DEFAULT_AVI_SYNTH_SCRIPT;
-	private static final String BUFFER_TYPE_FILE = "file";
+	private static final String BUFFER_TYPE_FILE = "file"; // deprecated: unused
 	private static final int MAX_MAX_MEMORY_DEFAULT_SIZE = 600;
 	private static final int BUFFER_MEMORY_FACTOR = 368;
 	private static int MAX_MAX_MEMORY_BUFFER_SIZE = MAX_MAX_MEMORY_DEFAULT_SIZE;
@@ -1667,17 +1667,18 @@ public class PmsConfiguration {
 		return getInt(KEY_MIN_STREAM_BUFFER, 1);
 	}
 
+	@Deprecated
 	public boolean isFileBuffer() {
-		String bufferType = getString(KEY_BUFFER_TYPE, "").trim();
+		String bufferType = getString(KEY_BUFFER_TYPE, "");
 		return bufferType.equals(BUFFER_TYPE_FILE);
 	}
 
 	public void setFfmpegSettings(String value) {
-		configuration.setProperty(KEY_FFMPEG_SETTINGS, value);
+		configuration.setProperty(KEY_FFMPEG_VIDEO_CUSTOM_OPTIONS, value);
 	}
 
 	public String getFfmpegSettings() {
-		return getString(KEY_FFMPEG_SETTINGS, "-threads 2 -g 1 -qscale 1 -qmin 2");
+		return getString(KEY_FFMPEG_VIDEO_CUSTOM_OPTIONS, "");
 	}
 
 	public boolean isMencoderNoOutOfSync() {
@@ -1720,10 +1721,12 @@ public class PmsConfiguration {
 		configuration.setProperty(KEY_MENCODER_INTELLIGENT_SYNC, value);
 	}
 
+	@Deprecated
 	public String getFfmpegAlternativePath() {
 		return getString(KEY_FFMPEG_ALTERNATIVE_PATH, null);
 	}
 
+	@Deprecated
 	public void setFfmpegAlternativePath(String value) {
 		configuration.setProperty(KEY_FFMPEG_ALTERNATIVE_PATH, value);
 	}
@@ -1773,6 +1776,7 @@ public class PmsConfiguration {
 		if (value.trim().length() == 0) {
 			value = "0";
 		}
+
 		configuration.setProperty(KEY_MENCODER_OVERSCAN_COMPENSATION_WIDTH, value);
 	}
 
@@ -1784,6 +1788,7 @@ public class PmsConfiguration {
 		if (value.trim().length() == 0) {
 			value = "0";
 		}
+
 		configuration.setProperty(KEY_MENCODER_OVERSCAN_COMPENSATION_HEIGHT, value);
 	}
 
@@ -1792,7 +1797,16 @@ public class PmsConfiguration {
 	}
 
 	public List<String> getEnginesAsList(SystemUtils registry) {
-		List<String> engines = stringToList(getString(KEY_ENGINES, "mencoder,avsmencoder,tsmuxer,ffmpegvideo,ffmpegaudio,mplayeraudio,tsmuxeraudio,ffmpegwebvideo,vlcvideo,mencoderwebvideo,mplayervideodump,mplayerwebaudio,vlcaudio,ffmpegdvrmsremux,rawthumbs"));
+		List<String> engines = stringToList(
+			// an empty string means: disable all engines
+			// http://www.ps3mediaserver.org/forum/viewtopic.php?f=6&t=15416
+			ConfigurationUtil.getPossiblyBlankConfigurationString(
+				configuration,
+				KEY_ENGINES,
+				"mencoder,avsmencoder,tsmuxer,ffmpegvideo,ffmpegaudio,mplayeraudio,tsmuxeraudio,ffmpegwebvideo,vlcvideo,mencoderwebvideo,mplayervideodump,mplayerwebaudio,vlcaudio,ffmpegdvrmsremux,rawthumbs"
+			)
+		);
+
 		engines = hackAvs(registry, engines);
 		return engines;
 	}

@@ -647,13 +647,17 @@ public class TSMuxerVideo extends Player {
 				pw.println(type + ", \"" + ffAudioPipe[i].getOutputPipe() + "\", " + timeshift + "track=" + (2 + i));
 			}
 		}
+
 		pw.close();
 
 		PipeProcess tsPipe = new PipeProcess(System.currentTimeMillis() + "tsmuxerout.ts");
-		String[] cmdArray = new String[]{executable(), f.getAbsolutePath(), tsPipe.getInputPipe()};
+		String[] cmdArray = new String[]{
+			executable(),
+			f.getAbsolutePath(),
+			tsPipe.getInputPipe()
+		};
 
 		cmdArray = finalizeTranscoderArgs(
-			this,
 			fileName,
 			dlna,
 			media,
@@ -671,26 +675,27 @@ public class TSMuxerVideo extends Player {
 
 		try {
 			Thread.sleep(50);
-		} catch (InterruptedException e) {
-		}
+		} catch (InterruptedException e) { }
+
 		tsPipe.deleteLater();
 
 		if (ffVideoPipe != null) {
 			ProcessWrapper ff_pipe_process = ffVideoPipe.getPipeProcess();
 			p.attachProcess(ff_pipe_process);
 			ff_pipe_process.runInNewThread();
+
 			try {
 				Thread.sleep(50);
-			} catch (InterruptedException e) {
-			}
+			} catch (InterruptedException e) { }
+
 			ffVideoPipe.deleteLater();
 
 			p.attachProcess(ffVideo);
 			ffVideo.runInNewThread();
+
 			try {
 				Thread.sleep(50);
-			} catch (InterruptedException e) {
-			}
+			} catch (InterruptedException e) { }
 		}
 
 		if (ffAudioPipe != null && params.aid != null) {
@@ -698,10 +703,11 @@ public class TSMuxerVideo extends Player {
 				ProcessWrapper ff_pipe_process = ffAudioPipe[i].getPipeProcess();
 				p.attachProcess(ff_pipe_process);
 				ff_pipe_process.runInNewThread();
+
 				try {
 					Thread.sleep(50);
-				} catch (InterruptedException e) {
-				}
+				} catch (InterruptedException e) { }
+
 				ffAudioPipe[i].deleteLater();
 				p.attachProcess(ffAudio[i]);
 				ffAudio[i].runInNewThread();
@@ -710,10 +716,10 @@ public class TSMuxerVideo extends Player {
 
 		try {
 			Thread.sleep(100);
-		} catch (InterruptedException e) {
-		}
+		} catch (InterruptedException e) { }
 
 		p.runInNewThread();
+
 		return p;
 	}
 
